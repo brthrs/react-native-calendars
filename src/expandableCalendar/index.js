@@ -32,7 +32,7 @@ const BOUNCINESS = 6;
 const CLOSED_HEIGHT = 110; // header + 1 week (WAS 120)
 const WEEK_HEIGHT = 46; // (WAS 46)
 const KNOB_CONTAINER_HEIGHT = 20;
-const HEADER_HEIGHT = 58; // (WAS 68)
+const HEADER_HEIGHT = 62; // (WAS 68)
 const DAY_NAMES_PADDING = 24;
 
 /**
