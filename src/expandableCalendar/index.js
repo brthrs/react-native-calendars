@@ -145,8 +145,9 @@ class ExpandableCalendar extends Component {
     });
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps, prevState) {
     const {date} = this.props.context;
+    const {position} = this.state;
     if (date !== prevProps.context.date) {
       // date was changed from AgendaList, arrows or scroll
       this.scrollToDate(date);
