@@ -92,6 +92,8 @@ class ExpandableCalendar extends Component {
     );
     this.openHeight = this.getOpenHeight();
 
+    this.bounceToPosition = this.bounceToPosition;
+
     const startHeight =
       props.initialPosition === POSITIONS.CLOSED
         ? this.closedHeight
@@ -148,6 +150,10 @@ class ExpandableCalendar extends Component {
     if (date !== prevProps.context.date) {
       // date was changed from AgendaList, arrows or scroll
       this.scrollToDate(date);
+    }
+    // Return calendar state when it's position has changed
+    if (position !== prevState.position) {
+      this.props.onCalendarToggled(position);
     }
   }
 
@@ -542,6 +548,7 @@ class ExpandableCalendar extends Component {
       horizontal,
       allowShadow,
       theme,
+      onCalendarToggled,
       ...others
     } = this.props;
     const {deltaY, position, screenReaderEnabled} = this.state;
