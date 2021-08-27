@@ -114,6 +114,7 @@ class CalendarListItem extends Component<CalendarListItemProps, CalendarListItem
           testID={testID}
           current={item}
           style={calStyle}
+          disableCalendarGestureRecognizer={false}
           headerStyle={horizontal ? headerStyle : undefined}
           disableMonthChange
           onPressArrowLeft={horizontal ? this.onPressArrowLeft : onPressArrowLeft}

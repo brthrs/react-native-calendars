@@ -29,7 +29,7 @@ enum Positions {
 }
 const SPEED = 20;
 const BOUNCINESS = 6;
-const CLOSED_HEIGHT = 120; // header + 1 week
+const CLOSED_HEIGHT = 140; // header + 1 week (was 120)
 const WEEK_HEIGHT = 46;
 const KNOB_CONTAINER_HEIGHT = 20;
 const DAY_NAMES_PADDING = 24;
@@ -55,10 +55,16 @@ export interface Props extends CalendarListProps {
   allowShadow?: boolean;
   /** whether to disable the week scroll in closed position */
   disableWeekScroll?: boolean;
+  /** option to override the height when closed */
+  closedHeight?: number,
+  /** option to override the height of the header */
+  headerHeight?: number,
   /** a threshold for opening the calendar with the pan gesture */
   openThreshold?: number;
   /** a threshold for closing the calendar with the pan gesture */
   closeThreshold?: number;
+  /** Whether we override the default static header offset or not */
+  staticHeaderOffset?: number;
   context?: any;
 }
 export type ExpandableCalendarProps = Props;
@@ -98,10 +104,16 @@ class ExpandableCalendar extends Component<Props, State> {
     allowShadow: PropTypes.bool,
     /** whether to disable the week scroll in closed position */
     disableWeekScroll: PropTypes.bool,
+    /** option to override the height when closed */
+    closedHeight: PropTypes.number,
+    /** option to override the height of the header */
+    headerHeight: PropTypes.number,
     /** a threshold for opening the calendar with the pan gesture */
     openThreshold: PropTypes.number,
     /** a threshold for closing the calendar with the pan gesture */
-    closeThreshold: PropTypes.number
+    closeThreshold: PropTypes.number,
+    /** Whether we override the default static header offset or not */
+    staticHeaderOffset: PropTypes.number,
   };
 
   static defaultProps = {
@@ -111,8 +123,11 @@ class ExpandableCalendar extends Component<Props, State> {
     leftArrowImageSource: LEFT_ARROW,
     rightArrowImageSource: RIGHT_ARROW,
     allowShadow: true,
+    closedHeight: CLOSED_HEIGHT,
+    headerHeight: HEADER_HEIGHT,
     openThreshold: PAN_GESTURE_THRESHOLD,
-    closeThreshold: PAN_GESTURE_THRESHOLD
+    closeThreshold: PAN_GESTURE_THRESHOLD,
+    staticHeaderOffset: commons.isAndroid ? 8 : 4
   };
 
   static positions = Positions;
@@ -139,18 +154,23 @@ class ExpandableCalendar extends Component<Props, State> {
   wrapper: React.RefObject<any> = React.createRef();
   calendar: React.RefObject<CalendarList> = React.createRef();
   weekCalendar: React.RefObject<any> = React.createRef();
+  headerHeight: number;
+  staticHeaderOffset: number;
 
   constructor(props: Props) {
     super(props);
-    
-    this.closedHeight = CLOSED_HEIGHT + (props.hideKnob ? 0 : KNOB_CONTAINER_HEIGHT);
+
+    this.closedHeight =  props.closedHeight ? props.closedHeight : CLOSED_HEIGHT + (props.hideKnob ? 0 : KNOB_CONTAINER_HEIGHT);
     this.numberOfWeeks = this.getNumberOfWeeksInMonth(new XDate(this.props.context.date));
     this.openHeight = this.getOpenHeight();
+    this.headerHeight = props.headerHeight ? props.headerHeight : HEADER_HEIGHT;
+    this.staticHeaderOffset = props?.staticHeaderOffset ?? ExpandableCalendar.defaultProps.staticHeaderOffset;
+    this.bounceToPosition = this.bounceToPosition;
 
     const startHeight = props.initialPosition === Positions.CLOSED ? this.closedHeight : this.openHeight;
     this._height = startHeight;
     this._wrapperStyles = {style: {height: startHeight}};
-    this._headerStyles = {style: {top: props.initialPosition === Positions.CLOSED ? 0 : -HEADER_HEIGHT}};
+    this._headerStyles = {style: {top: props.initialPosition === Positions.CLOSED ? 0 : -this.headerHeight}};
     this._weekCalendarStyles = {style: {}};
 
     this.visibleMonth = this.getMonth(this.props.context.date);
@@ -172,7 +192,7 @@ class ExpandableCalendar extends Component<Props, State> {
 
     this.state = {
       deltaY: new Animated.Value(startHeight),
-      headerDeltaY: new Animated.Value(props.initialPosition === Positions.CLOSED ? 0 : -HEADER_HEIGHT),
+      headerDeltaY: new Animated.Value(props.initialPosition === Positions.CLOSED ? 0 : -this.headerHeight),
       position: props.initialPosition || Positions.CLOSED,
       screenReaderEnabled: false
     };
@@ -197,11 +217,18 @@ class ExpandableCalendar extends Component<Props, State> {
     }
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps: Props, prevState: State) {
     const {date} = this.props.context;
+    const { position } = this.state;
+
     if (date !== prevProps.context.date) {
       // date was changed from AgendaList, arrows or scroll
       this.scrollToDate(date);
+    }
+
+    // Return calendar state when it's position has changed
+    if (position !== prevState.position && this.props.onCalendarToggled) {
+      this.props.onCalendarToggled();
     }
   }
 
@@ -211,7 +238,7 @@ class ExpandableCalendar extends Component<Props, State> {
 
   updateNativeStyles() {
     this.wrapper?.current?.setNativeProps(this._wrapperStyles);
-    
+
     if (!this.props.horizontal) {
       this.header?.current?.setNativeProps(this._headerStyles);
     } else {
@@ -255,7 +282,7 @@ class ExpandableCalendar extends Component<Props, State> {
     if (!this.props.horizontal) {
       return Math.max(commons.screenHeight, commons.screenWidth);
     }
-    return CLOSED_HEIGHT + WEEK_HEIGHT * (this.numberOfWeeks - 1) + (this.props.hideKnob ? 12 : KNOB_CONTAINER_HEIGHT);
+    return this.closedHeight + WEEK_HEIGHT * (this.numberOfWeeks - 1) + (this.props.hideKnob ? 12 : KNOB_CONTAINER_HEIGHT);
   }
 
   getYear(date: Date) {
@@ -316,9 +343,15 @@ class ExpandableCalendar extends Component<Props, State> {
     // limit min height to closed height
     this._wrapperStyles.style.height = Math.max(this.closedHeight, this._height + gestureState.dy);
 
+    // Do not allow to pull the container lower than the calendar height + knob
+    if (this._wrapperStyles.style.height > this.openHeight + 60) {
+      this._wrapperStyles.style.height = this.openHeight + 60;
+      return null;
+    }
+
     if (!this.props.horizontal) {
       // vertical CalenderList header
-      this._headerStyles.style.top = Math.min(Math.max(-gestureState.dy, -HEADER_HEIGHT), 0);
+      this._headerStyles.style.top = Math.min(Math.max(-gestureState.dy, -this.headerHeight), 0);
     } else {
       // horizontal Week view
       if (this.state.position === Positions.CLOSED) {
@@ -480,7 +513,7 @@ class ExpandableCalendar extends Component<Props, State> {
     return (
       <Animated.View
         ref={this.header}
-        style={[this.style.header, {height: HEADER_HEIGHT, top: this.state.headerDeltaY}]}
+        style={[this.style.header, {height: this.headerHeight, top: this.state.headerDeltaY}]}
         pointerEvents={'none'}
       >
         <Text allowFontScaling={false} style={this.style.headerTitle}>
@@ -496,11 +529,16 @@ class ExpandableCalendar extends Component<Props, State> {
     const {disableWeekScroll} = this.props;
     const WeekComponent = disableWeekScroll ? Week : WeekCalendar;
     const weekCalendarProps = disableWeekScroll ? undefined : {allowShadow: false};
-    
+
     return (
       <Animated.View
         ref={this.weekCalendar}
-        style={[this.style.weekContainer, position === Positions.OPEN ? this.style.hidden : this.style.visible]}
+        style={[
+          this.style.weekContainer, {
+            top: this.headerHeight + this.staticHeaderOffset, // align row on top of calendar's first row
+          },
+          position === Positions.OPEN ? this.style.hidden : this.style.visible
+        ]}
         pointerEvents={position === Positions.CLOSED ? 'auto' : 'none'}
       >
         <WeekComponent
@@ -543,7 +581,7 @@ class ExpandableCalendar extends Component<Props, State> {
   };
 
   render() {
-    const {style, hideKnob, horizontal, allowShadow, theme, ...others} = this.props;
+    const {style, hideKnob, horizontal, allowShadow, theme, onCalendarToggled, ...others} = this.props;
     const {deltaY, position, screenReaderEnabled} = this.state;
     const isOpen = position === Positions.OPEN;
     const themeObject = Object.assign(this.headerStyleOverride, theme);
