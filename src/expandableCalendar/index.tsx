@@ -65,6 +65,8 @@ export interface Props extends CalendarListProps {
   closeThreshold?: number;
   /** Whether we override the default static header offset or not */
   staticHeaderOffset?: number;
+  /** Whether we override the default week height or not */
+  weekHeight?: number;
   context?: any;
 }
 export type ExpandableCalendarProps = Props;
@@ -114,6 +116,8 @@ class ExpandableCalendar extends Component<Props, State> {
     closeThreshold: PropTypes.number,
     /** Whether we override the default static header offset or not */
     staticHeaderOffset: PropTypes.number,
+    /** Whether we override the default week height or not */
+    weekHeight: PropTypes.number,
   };
 
   static defaultProps = {
@@ -125,6 +129,7 @@ class ExpandableCalendar extends Component<Props, State> {
     allowShadow: true,
     closedHeight: CLOSED_HEIGHT,
     headerHeight: HEADER_HEIGHT,
+    weekHeight: WEEK_HEIGHT,
     openThreshold: PAN_GESTURE_THRESHOLD,
     closeThreshold: PAN_GESTURE_THRESHOLD,
     staticHeaderOffset: commons.isAndroid ? 8 : 4
@@ -155,6 +160,7 @@ class ExpandableCalendar extends Component<Props, State> {
   calendar: React.RefObject<CalendarList> = React.createRef();
   weekCalendar: React.RefObject<any> = React.createRef();
   headerHeight: number;
+  weekHeight: number;
   staticHeaderOffset: number;
 
   constructor(props: Props) {
@@ -162,9 +168,10 @@ class ExpandableCalendar extends Component<Props, State> {
 
     this.closedHeight =  props.closedHeight ? props.closedHeight : CLOSED_HEIGHT + (props.hideKnob ? 0 : KNOB_CONTAINER_HEIGHT);
     this.numberOfWeeks = this.getNumberOfWeeksInMonth(new XDate(this.props.context.date));
-    this.openHeight = this.getOpenHeight();
     this.headerHeight = props.headerHeight ? props.headerHeight : HEADER_HEIGHT;
+    this.weekHeight = props.weekHeight ? props.weekHeight : WEEK_HEIGHT;
     this.staticHeaderOffset = props?.staticHeaderOffset ?? ExpandableCalendar.defaultProps.staticHeaderOffset;
+    this.openHeight = this.getOpenHeight();
     this.bounceToPosition = this.bounceToPosition;
 
     const startHeight = props.initialPosition === Positions.CLOSED ? this.closedHeight : this.openHeight;
@@ -282,7 +289,7 @@ class ExpandableCalendar extends Component<Props, State> {
     if (!this.props.horizontal) {
       return Math.max(commons.screenHeight, commons.screenWidth);
     }
-    return this.closedHeight + WEEK_HEIGHT * (this.numberOfWeeks - 1) + (this.props.hideKnob ? 12 : KNOB_CONTAINER_HEIGHT);
+    return this.closedHeight + this.weekHeight * (this.numberOfWeeks - 1) + (this.props.hideKnob ? 12 : KNOB_CONTAINER_HEIGHT);
   }
 
   getYear(date: Date) {
