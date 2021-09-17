@@ -47,7 +47,7 @@ class Presenter {
 
     if (this._shouldUpdateState(page, newPage)) {
       _.invoke(context, 'setDate', items[newPage], updateSources.WEEK_SCROLL);
-      const data = this._getItemsForPage(page, items);
+      const data = this._getItemsForPage(newPage, items);
       updateState(data, newPage);
     }
   };

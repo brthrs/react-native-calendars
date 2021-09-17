@@ -4,7 +4,7 @@ import XDate from 'xdate';
 import {Map} from 'immutable';
 
 import React, {Component} from 'react';
-import {FlatList, View, Text, NativeSyntheticEvent, NativeScrollEvent} from 'react-native';
+import {FlatList, View, Text, NativeSyntheticEvent, NativeScrollEvent, ScrollViewProps} from 'react-native';
 
 // @ts-expect-error
 import {extractComponentProps} from '../../component-updater';
@@ -29,6 +29,8 @@ interface Props extends CalendarListProps {
   allowShadow?: boolean;
   /** whether to hide the names of the week days */
   hideDayNames?: boolean;
+  /** Listener for our 'MomentumScrollEnd' event */
+  onWeekScrollEnd?: ScrollViewProps['onMomentumScrollEnd'];
   context?: any;
 }
 export type WeekCalendarProps = Props;
@@ -52,7 +54,9 @@ class WeekCalendar extends Component<Props, State> {
     /** whether to have shadow/elevation for the calendar */
     allowShadow: PropTypes.bool,
     /** whether to hide the names of the week days */
-    hideDayNames: PropTypes.bool
+    hideDayNames: PropTypes.bool,
+    /** Listener for our 'MomentumScrollEnd' event */
+    onWeekScrollEnd: PropTypes.func,
   };
 
   static defaultProps = {
@@ -131,7 +135,7 @@ class WeekCalendar extends Component<Props, State> {
     onScroll({context, updateState, x, page, items, width: containerWidth});
   };
 
-  onMomentumScrollEnd = () => {
+  onMomentumScrollEnd: ScrollViewProps['onMomentumScrollEnd'] = (event) => {
     const {items} = this.state;
     const {onMomentumScrollEnd} = this.presenter;
 
@@ -142,6 +146,9 @@ class WeekCalendar extends Component<Props, State> {
     };
 
     onMomentumScrollEnd({items, props: this.props, page: this.page, updateItems});
+
+    // Execute our 'onWeekScrollEnd' prop to forward the event to the caller
+    if(this.props.onWeekScrollEnd) this.props.onWeekScrollEnd(event)
   };
 
   renderItem = ({item}: any) => {
